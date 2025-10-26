@@ -1,3 +1,4 @@
+// components/sign-up-form.tsx
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [businessName, setBusinessName] = useState(""); // --- ADDED ---
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -39,12 +41,26 @@ export function SignUpForm({
       return;
     }
 
+    // --- ADDED ---
+    if (!businessName) {
+      setError("Business name is required");
+      setIsLoading(false);
+      return;
+    }
+    // --- END ADDED ---
+
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/protected`,
+          // --- MODIFIED ---
+          // This securely passes the business name to your Supabase trigger
+          data: {
+            business_name: businessName,
+          },
+          // --- END MODIFIED ---
         },
       });
       if (error) throw error;
@@ -61,11 +77,27 @@ export function SignUpForm({
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardDescription>
+            Create a new account for your business
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
+              {/* --- ADDED NEW FIELD --- */}
+              <div className="grid gap-2">
+                <Label htmlFor="business-name">Business Name</Label>
+                <Input
+                  id="business-name"
+                  type="text"
+                  placeholder="e.g., Atma BJJ"
+                  required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                />
+              </div>
+              {/* --- END ADDED --- */}
+
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
