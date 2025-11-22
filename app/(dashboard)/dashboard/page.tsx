@@ -1,83 +1,112 @@
-// app/protected/page.tsx
+// app/(dashboard)/dashboard/page.tsx
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { InfoIcon, Building } from "lucide-react";
-import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
+import { Building, ArrowRight } from "lucide-react";
 import { LeadsList } from "@/components/leads-list";
+import { StatCards } from "@/components/stat-cards";
+import { ActivityFeed } from "@/components/activity-feed";
+import { SourceBarChart } from "@/components/source-bar-chart";
+import { Suspense } from "react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { PostgrestError } from "@supabase/supabase-js";
 
+// A simple loading skeleton
+const LoadingSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="h-5 w-32 bg-muted-foreground/20 rounded-md"></CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="h-8 w-16 bg-muted-foreground/20 rounded-md"></div>
+    </CardContent>
+  </Card>
+);
 
-export default async function ProtectedPage() {
+// Define the type for our RPC response
+type SourceData = {
+  source: string | null;
+  count: number;
+};
+
+export default async function DashboardPage() {
   const supabase = await createClient();
+  
+  // 1. Check Auth (Standard check)
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) redirect("/auth/login");
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  // --- REMOVED TENANT QUERY HERE ---
+  // We don't need to look up who owns the data. The user is logged in,
+  // so they own ALL the data in this database.
 
-  if (error || !user) {
-    redirect("/auth/login");
-  }
-
-  // This query is working perfectly
-  const { data: tenantData, error: tenantError } = await supabase
-    .from("profiles")
-    .select(
-      `
-      tenant_id,
-      tenants (
-        name,
-        tenant_slug
-      )
-    `,
-    )
-    .eq("id", user.id) // Get profile matching the logged-in user
-    .single(); // We only expect one
-
-  if (tenantError) {
-    console.error("Error fetching tenant:", tenantError.message);
-  }
-
-  // --- THIS IS THE FIX ---
-  // We removed the [0] because the log shows 'tenants' is an object
-  const tenant = Array.isArray(tenantData?.tenants) ? tenantData.tenants[0] : tenantData?.tenants;
-  const tenantName = tenant?.name || "Your Dashboard";
+  // 2. Fetch Stats Data (Source Chart)
+  const { data: sourceData, error: sourceError }: { data: SourceData[] | null; error: PostgrestError | null } =
+    await supabase.rpc("get_stats_by_source");
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user.
-        </div>
-      </div>
-
-      {/* Display the Tenant Name */}
+    <div className="flex-1 w-full flex flex-col gap-8">
+      {/* Page Header */}
       <div className="flex flex-col gap-2 items-start">
         <div className="flex items-center gap-2">
           <Building className="h-5 w-5" />
-          <h1 className="font-bold text-2xl">{tenantName}</h1>
+          {/* You can hardcode "Dashboard" or use an Env Variable for the Client Name */}
+          <h1 className="font-bold text-2xl">Dashboard</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Welcome to your LNS dashboard.
+          Overview of your lead generation system.
         </p>
       </div>
 
-      <div className="flex flex-col gap-6">
-        <h2 className="font-bold text-2xl">Recent Leads</h2>
-        <LeadsList />
-      </div>
+      {/* 1. Funnel Stat Cards (Full Width) */}
+      <Suspense fallback={<LoadingSkeleton />}>
+        <StatCards />
+      </Suspense>
 
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          {JSON.stringify(user, null, 2)}
-        </pre>
-      </div>
+      {/* 2. Side-by-Side Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Main Column (2/3 width) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          
+          <Suspense fallback={<LoadingSkeleton />}>
+            {/* Pass the fetched data to the chart */}
+            <SourceBarChart data={sourceData || []} />
+          </Suspense>
+          
+          <Suspense fallback={<LoadingSkeleton />}>
+            <ActivityFeed />
+          </Suspense>
+        </div>
 
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
-        <FetchDataSteps />
+        {/* Side Column (1/3 width) */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Recent Leads</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<LoadingSkeleton />}>
+                <LeadsList />
+              </Suspense>
+            </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/leads">
+                  View All Leads
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </div>
   );

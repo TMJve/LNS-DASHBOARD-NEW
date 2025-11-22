@@ -4,12 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 export async function LeadsList() {
   const supabase = await createClient();
 
-  // Fetch leads. RLS automatically filters this to ONLY
-  // get leads for the currently logged-in tenant.
+  // --- MODIFIED: Added .limit(5) ---
   const { data: leads, error } = await supabase
     .from("leads")
-    .select("first_name, email, status, created_at")
-    .order("created_at", { ascending: false }); // Show newest first
+    .select("first_name, email, status, created_at, source")
+    .order("created_at", { ascending: false })
+    .limit(5); // Only get the 5 most recent
 
   if (error) {
     return <p className="text-red-500">Error fetching leads: {error.message}</p>;
@@ -30,12 +30,17 @@ export async function LeadsList() {
     <div className="flex flex-col gap-4">
       {leads.map((lead) => (
         <div
-          key={lead.email} // Using email as a key for this example
+          key={lead.email} // Note: Using email as a key isn't ideal if not unique
           className="p-4 border rounded-md flex justify-between items-center"
         >
           <div>
-            <p className="font-medium">{lead.first_name}</p>
+            <p className="font-medium">{lead.first_name || "No Name"}</p>
             <p className="text-sm text-muted-foreground">{lead.email}</p>
+            {lead.source && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Source: {lead.source}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold capitalize">{lead.status}</p>

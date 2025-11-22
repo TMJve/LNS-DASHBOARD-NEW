@@ -1,5 +1,5 @@
 // app/(dashboard)/layout.tsx
-import { DeployButton } from "@/components/deploy-button";
+// import { DeployButton } from "@/components/deploy-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher"; // This is now used
@@ -19,7 +19,7 @@ export default function DashboardLayout({
           <div className="flex gap-5 items-center font-semibold">
             <Link href={"/dashboard"}>Nimbiiz LNS</Link>
             <div className="flex items-center gap-2">
-              <DeployButton />
+              {/* <DeployButton /> */}
             </div>
           </div>
           
@@ -36,7 +36,7 @@ export default function DashboardLayout({
 
       <div className="flex-1 flex">
         <Sidebar />
-        <main className="flex-1 flex flex-col p-6 max-w-5xl">
+        <main className="flex-1 flex flex-col p-6 ">
           {children}
         </main>
       </div>
